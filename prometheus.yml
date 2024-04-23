@@ -1,0 +1,48 @@
+## prometheus.yml
+
+rule_files:
+  - "rules/*.yml"
+
+global:
+  scrape_interval: 10s
+  evaluation_interval: 5s
+
+scrape_configs:
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: "%%PM_SPRING_ACTUATOR_JOB_NAME%%"
+    metrics_path: "%%PM_SPRING_ACTUATOR_METRICS_PATH%%"
+    static_configs:
+      - targets: ["%%PM_SPRING_ACTUATOR_TARGET_DEV_URL%%"]
+        labels:
+          instance: "%%PM_SPRING_ACTUATOR_TARGET_DEV_LABEL_INSTANCE%%"
+          group: dev
+      - targets: ["%%PM_SPRING_ACTUATOR_TARGET_PROD_URL%%"]
+        labels:
+          instance: "%%PM_SPRING_ACTUATOR_TARGET_PROD_LABEL_INSTANCE%%"
+          group: prod
+
+  - job_name: "%%PM_NODE_EXPORTER_JOB_NAME%%"
+    metrics_path: "%%PM_NODE_EXPORTER_METRICS_PATH%%"
+    static_configs:
+      - targets: ["%%PM_NODE_EXPORTER_TARGET_ADMIN_URL%%"]
+        labels:
+          instance: "%%PM_NODE_EXPORTER_TARGET_ADMIN_LABEL_INSTANCE%%"
+          group: admin
+      - targets: ["%%PM_NODE_EXPORTER_TARGET_DEV_URL%%"]
+        labels:
+          instance: "%%PM_NODE_EXPORTER_TARGET_DEV_LABEL_INSTANCE%%"
+          group: dev
+      - targets: ["%%PM_NODE_EXPORTER_TARGET_PROD_URL%%"]
+        labels:
+          instance: "%%PM_NODE_EXPORTER_TARGET_PROD_LABEL_INSTANCE%%"
+          group: prod
+
+alerting:
+  alertmanagers:
+    - scheme: http
+      static_configs:
+        - targets:
+            - "alertmanager:9093"

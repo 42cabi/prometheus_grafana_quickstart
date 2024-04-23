@@ -1,0 +1,48 @@
+## docker-compose.yml
+
+version: "3.1"
+
+volumes:
+  prometheus_data: {}
+  grafana_data: {}
+
+services:
+  prometheus:
+    image: prometheus-custom
+    build:
+      context: .
+      dockerfile: prometheus/Dockerfile
+    container_name: prometheus
+    volumes:
+      - prometheus_data:/prometheus
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - 9090:9090
+
+  alertmanager:
+    image: alertmanager-custom
+    build:
+      context: .
+      dockerfile: alertmanager/Dockerfile
+    container_name: alertmanager
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - 9093:9093
+
+  grafana:
+    image: grafana/grafana:10.4.2
+    container_name: grafana
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./datasource.yml:/etc/grafana/provisioning/datasources/datasource.yml
+      - ./dashboard.yml:/etc/grafana/provisioning/dashboards/dashboard.yml
+      - ./dashboards:/etc/dashboards
+    env_file:
+      - .env
+    restart: always
+    ports:
+      - 3000:3000

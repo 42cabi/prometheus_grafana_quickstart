@@ -1,0 +1,118 @@
+groups:
+  - name: application-status-rules
+    rules:
+      - alert: InstanceDown
+        expr: up{job="%%PM_SPRING_ACTUATOR_JOB_NAME%%"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "🚨 {{ $labels.instance }} 서버가 죽었어요.. 🚨"
+          description: "{{ $labels.instance }} 서버가 1분 이상 죽어있어요.. 조치가 필요해요."
+
+      - alert: HighProcessCpuUsage
+        expr: (avg by (instance) (process_cpu_usage{job="%%PM_SPRING_ACTUATOR_JOB_NAME%%"}) * 100) > 70
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠️ {{ $labels.instance }} 서버에서 높은 프로세스 CPU 사용률 감지됐어요: {{ $value }}% ⚠️"
+          description: "{{ $labels.instance }} 서버에서 최근 1분 동안 프로세스 CPU 사용률이 70%를 넘었어요. 프로세스가 과도하게 CPU를 사용하고 있을 수 있어요."
+
+      - alert: HighSystemCpuUsage
+        expr: (avg by (instance) (system_cpu_usage{job="%%PM_SPRING_ACTUATOR_JOB_NAME%%"}) * 100) > 70
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠️ {{ $labels.instance }} 서버에서 높은 시스템 CPU 사용률 감지됐어요: {{ $value }}% ⚠️"
+          description: "{{ $labels.instance }} 서버에서 최근 1분 동안 시스템 CPU 사용률이 70%를 넘었어요. 시스템 리소스 사용이 과도할 수 있어요."
+
+  - name: hikaricp-connection-rules
+    rules:
+      - alert: HighActiveConnectionRatio
+        expr: (hikaricp_connections_active{job="%%PM_SPRING_ACTUATOR_JOB_NAME%%"} / (hikaricp_connections_active{job="%%PM_SPRING_ACTUATOR_JOB_NAME%%"} + hikaricp_connections_idle{job="%%PM_SPRING_ACTUATOR_JOB_NAME%%"})) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠️ {{ $labels.instance }}서버에서 활성 연결 비율이 너무 높아요: {{ $value }}% ⚠️"
+          description: "{{ $labels.instance }}서버에서 최근 5분 동안 HikariCP의 연결 중 80% 이상이 활성 상태입니다. 부하가 높거나 풀 크기가 부족할 수 있어요."
+
+      - alert: HighPendingConnectionRatio
+        expr: (hikaricp_connections_pending{job="%%PM_SPRING_ACTUATOR_JOB_NAME%%"} / (hikaricp_connections_active{job="%%PM_SPRING_ACTUATOR_JOB_NAME%%"} + hikaricp_connections_idle{job="%%PM_SPRING_ACTUATOR_JOB_NAME%%"} + hikaricp_connections_pending{job="%%PM_SPRING_ACTUATOR_JOB_NAME%%"})) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "🚨 {{ $labels.instance }}서버에서 대기 연결 비율이 너무 높아요: {{ $value }}% 🚨"
+          description: "{{ $labels.instance }}서버에서 최근 5분 동안 HikariCP의 전체 연결 대비 10% 이상이 대기 중입니다. 데이터베이스 연결에 심각한 병목 현상이 발생할 수 있어요."
+
+  - name: jvm-memory-usage-rules
+    rules:
+      - alert: HighJVMHeapMemoryUsage
+        expr: (sum by(instance) (jvm_memory_used_bytes{area="heap", job="%%PM_SPRING_ACTUATOR_JOB_NAME%%"}) * 100 / sum by(instance) (jvm_memory_max_bytes{area="heap", job="%%PM_SPRING_ACTUATOR_JOB_NAME%%"})) > 70
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "🚨 {{ $labels.instance }}서버에서 JVM 힙 메모리 사용률이 높아요: {{ $value }}% 🚨"
+          description: "{{ $labels.instance }}서버에서 최근 5분 동안 JVM 힙 메모리 사용률이 70%를 초과했어요. 메모리 누수 가능성이 있거나 애플리케이션이 과도한 메모리를 사용하고 있을 수 있어요."
+
+      - alert: HighJVMNonHeapMemoryUsage
+        expr: (sum by(instance) (jvm_memory_used_bytes{area="nonheap", job="%%PM_SPRING_ACTUATOR_JOB_NAME%%"}) * 100 / sum by(instance) (jvm_memory_max_bytes{area="nonheap", job="%%PM_SPRING_ACTUATOR_JOB_NAME%%"})) > 70
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "🚨 {{ $labels.instance }}서버에서 JVM 비힙 메모리 사용률이 높아요: {{ $value }}% 🚨"
+          description: "{{ $labels.instance }}서버에서 최근 5분 동안 JVM 비힙 메모리 사용률이 70%를 초과했어요. 시스템 라이브러리 또는 JVM 자체의 메모리 요구가 증가했을 수 있어요."
+
+  - name: http-traffic-rules
+    rules:
+      - alert: HighHttpRequestRate
+        expr: sum by(instance) (rate(http_server_requests_seconds_count{job="%%PM_SPRING_ACTUATOR_JOB_NAME%%"}[1m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠️ {{ $labels.instance }}서버에서 HTTP 요청 처리율이 높아요: {{ $value }}% ⚠️"
+          description: "{{ $labels.instance }}서버에서 초당 요청 처리율이 1을 초과하고 있어요. 트래픽 증가 또는 잠재적인 서비스 병목 현상을 확인해주세요."
+
+      - alert: HighHttpRequestRateByUriMethod
+        expr: sum by(uri, method, instance) (rate(http_server_requests_seconds_count{job="%%PM_SPRING_ACTUATOR_JOB_NAME%%"}[1m])) > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠️ {{ $labels.instance }}서버에서 {{ $labels.method }} {{ $labels.uri }} 요청 처리율이 높아요: {{ $value }}% ⚠️"
+          description: "{{ $labels.instance }}서버에서 {{ $labels.method }} 방식으로 {{ $labels.uri }} URI에 대한 초당 요청 처리율이 5을 초과하고 있어요. 해당 URI에 대한 요청 처리 로직이 비효율적일 수 있어요."
+
+      - alert: HighHttpResponseTime
+        expr: sum by (instance) (rate(http_server_requests_seconds_sum{job="%%PM_SPRING_ACTUATOR_JOB_NAME%%", status!~"5.."}[1m])) / sum by (instance) (rate(http_server_requests_seconds_count{job="%%PM_SPRING_ACTUATOR_JOB_NAME%%", status!~"5.."}[1m])) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠️ {{ $labels.instance }}서버에서 HTTP 응답 시간이 높아요: {{ $value }}s ⚠️"
+          description: "{{ $labels.instance }}서버에서 최근 5분 동안 HTTP 응답 시간이 0.1초를 초과하고 있어요. 서비스 응답 시간이 예상보다 느릴 수 있으며, 성능 최적화가 필요할 수 있어요."
+
+  - name: http-error-rules
+    rules:
+      - alert: HighHttp4xxErrorRate
+        expr: sum by(instance) (rate(http_server_requests_seconds_count{job="%%PM_SPRING_ACTUATOR_JOB_NAME%%", status=~"4.."}[1m])) > 0.2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠️ {{ $labels.instance }}서버에서 4xx 오류율이 높아요: {{ $value }}개/초"
+          description: "{{ $labels.instance }}서버에서 HTTP 4xx 오류 응답이 초당 0.2개를 초과하고 있어요. 이는 클라이언트 요청 오류가 예상보다 많이 발생하고 있음을 나타내며, 입력 유효성 검사 또는 요청 처리 로직의 개선이 필요할 수 있어요."
+
+      - alert: ServerErrorOccurred
+        expr: changes(http_server_requests_seconds_count{job="%%PM_SPRING_ACTUATOR_JOB_NAME%%", instance=~".*", status=~"5.."}[1m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "🚨 {{ $labels.instance }}서버에서 HTTP 500 오류 발생 🚨"
+          description: "{{ $labels.instance }} 서버에서 '{{ $labels.method }} {{ $labels.uri }}' 요청 처리 중 '{{ $labels.exception }}' 예외가 발생하여 서버 오류({{ $labels.status }}) 가 발생했어요. {{ $labels.outcome }} 상태를 확인하세요."

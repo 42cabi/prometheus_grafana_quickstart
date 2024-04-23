@@ -1,0 +1,56 @@
+groups:
+  - name: node-exporter-rules
+    rules:
+      - alert: InstanceDown
+        expr: up{job="%%PM_NODE_EXPORTER_JOB_NAME%%"} == 0
+        for: 1ms
+        labels:
+          severity: critical
+        annotations:
+          summary: "🚨 {{ $labels.instance }} 인스턴스가 죽었어요.. 🚨"
+          description: "{{ $labels.instance }} 인스턴스가 1분 이상 죽어있어요.. 조치가 필요해요."
+
+      - alert: high_cpu_utilization
+        expr: 100 - (avg by (instance) (irate(node_cpu_seconds_total{job="%%PM_NODE_EXPORTER_JOB_NAME%%", mode="idle"}[5m])) * 100) > 75
+        for: 30s
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠️ {{ $labels.instance }} 인스턴스에서 높은 CPU 사용률 감지됐어요: {{ $value }}% ⚠️"
+          description: "{{ $labels.instance }} 인스턴스에서 지난 30초간 CPU 사용률이 평균 75%를 넘었어요. 호스트의 CPU 관리 문제일 수 있으며, 조사가 필요해요."
+
+      - alert: low_memory_availability
+        expr: (sum by (instance) (node_memory_MemTotal_bytes{job="%%PM_NODE_EXPORTER_JOB_NAME%%"}) - sum by (instance) (node_memory_MemFree_bytes{job="%%PM_NODE_EXPORTER_JOB_NAME%%"} + node_memory_Buffers_bytes{job="%%PM_NODE_EXPORTER_JOB_NAME%%"} + node_memory_Cached_bytes{job="%%PM_NODE_EXPORTER_JOB_NAME%%"})) / sum by (instance) (node_memory_MemTotal_bytes{job="%%PM_NODE_EXPORTER_JOB_NAME%%"}) * 100 > 75
+        for: 30s
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠️ {{ $labels.instance }} 인스턴스에서 낮은 메모리 가용성 감지됐어요: {{ $value }}% ⚠️"
+          description: "{{ $labels.instance }}의 메모리 사용률이 지난 30초간 75%를 넘었어요. 호스트의 메모리 관리 문제일 수 있으며, 조사가 필요해요."
+
+      - alert: high_disk_space_utilization
+        expr: (node_filesystem_size_bytes{job="%%PM_NODE_EXPORTER_JOB_NAME%%", mountpoint="/"} - node_filesystem_free_bytes{job="%%PM_NODE_EXPORTER_JOB_NAME%%", mountpoint="/"}) / node_filesystem_size_bytes{job="%%PM_NODE_EXPORTER_JOB_NAME%%", mountpoint="/"} * 100 > 75
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠️ {{ $labels.instance }} 인스턴스에서 높은 디스크 공간 사용률 감지됐어요: {{ $value }}% ⚠️"
+          description: "{{ $labels.instance }}의 디스크 공간 사용률이 75%를 넘었어요. 저장 공간 관리 문제를 의심해볼 수 있고, 조사가 필요해요."
+
+      - alert: high_ram_utilization
+        expr: 100 * (1 - ((node_memory_MemFree_bytes{job="%%PM_NODE_EXPORTER_JOB_NAME%%"} + node_memory_Buffers_bytes{job="%%PM_NODE_EXPORTER_JOB_NAME%%"} + node_memory_Cached_bytes{job="%%PM_NODE_EXPORTER_JOB_NAME%%"}) / node_memory_MemTotal_bytes{job="%%PM_NODE_EXPORTER_JOB_NAME%%"})) > 75
+        for: 30s
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠️ {{ $labels.instance }} 인스턴스에서 높은 RAM 사용률 감지됐어요: {{ $value }}% ⚠️"
+          description: "{{ $labels.instance }}의 RAM 사용률이 지난 30초간 75%를 넘었어요. 호스트 인스턴스에서 발생할 수 있는 문제이며, 조사가 필요해요."
+
+      - alert: RebootRequired
+        expr: node_reboot_required{job="%%PM_NODE_EXPORTER_JOB_NAME%%"} > 0
+        for: 30s
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠️ {{ $labels.instance }} 인스턴스 - 재부팅이 필요해요. ⚠️"
+          description: "{{ $labels.instance }} 인스턴스 - 재부팅이 필요해요. 재부팅 시 IP 주소가 변경될 수 있으니 주의해주세요."
