@@ -3,12 +3,12 @@ groups:
     rules:
       - alert: InstanceDown
         expr: up{job="%%PM_SPRING_ACTUATOR_JOB_NAME%%"} == 0
-        for: 1m
+        for: 2m
         labels:
           severity: critical
         annotations:
           summary: "🚨 {{ $labels.instance }} 서버가 죽었어요.. 🚨"
-          description: "{{ $labels.instance }} 서버가 1분 이상 죽어있어요.. 조치가 필요해요."
+          description: "{{ $labels.instance }} 서버가 2분 이상 죽어있어요.. 조치가 필요해요."
 
       - alert: HighProcessCpuUsage
         expr: (avg by (instance) (process_cpu_usage{job="%%PM_SPRING_ACTUATOR_JOB_NAME%%"}) * 100) > 70
@@ -71,13 +71,13 @@ groups:
   - name: http-traffic-rules
     rules:
       - alert: HighHttpRequestRate
-        expr: sum by(instance) (rate(http_server_requests_seconds_count{job="%%PM_SPRING_ACTUATOR_JOB_NAME%%"}[1m])) > 1
+        expr: sum by(instance) (rate(http_server_requests_seconds_count{job="%%PM_SPRING_ACTUATOR_JOB_NAME%%"}[1m])) > 3
         for: 5m
         labels:
           severity: warning
         annotations:
           summary: "⚠️ {{ $labels.instance }}서버에서 HTTP 요청 처리율이 높아요: {{ $value }}% ⚠️"
-          description: "{{ $labels.instance }}서버에서 초당 요청 처리율이 1을 초과하고 있어요. 트래픽 증가 또는 잠재적인 서비스 병목 현상을 확인해주세요."
+          description: "{{ $labels.instance }}서버에서 초당 요청 처리율이 3을 초과하고 있어요. 트래픽 증가 또는 잠재적인 서비스 병목 현상을 확인해주세요."
 
       - alert: HighHttpRequestRateByUriMethod
         expr: sum by(uri, method, instance) (rate(http_server_requests_seconds_count{job="%%PM_SPRING_ACTUATOR_JOB_NAME%%"}[1m])) > 5
@@ -99,18 +99,9 @@ groups:
 
   - name: http-error-rules
     rules:
-      - alert: HighHttp4xxErrorRate
-        expr: sum by(instance) (rate(http_server_requests_seconds_count{job="%%PM_SPRING_ACTUATOR_JOB_NAME%%", status=~"4.."}[1m])) > 0.2
-        for: 5m
-        labels:
-          severity: warning
-        annotations:
-          summary: "⚠️ {{ $labels.instance }}서버에서 4xx 오류율이 높아요: {{ $value }}개/초"
-          description: "{{ $labels.instance }}서버에서 HTTP 4xx 오류 응답이 초당 0.2개를 초과하고 있어요. 이는 클라이언트 요청 오류가 예상보다 많이 발생하고 있음을 나타내며, 입력 유효성 검사 또는 요청 처리 로직의 개선이 필요할 수 있어요."
-
       - alert: ServerErrorOccurred
         expr: changes(http_server_requests_seconds_count{job="%%PM_SPRING_ACTUATOR_JOB_NAME%%", instance=~".*", status=~"5.."}[1m]) > 0
-        for: 1m
+        for: 3m
         labels:
           severity: critical
         annotations:
